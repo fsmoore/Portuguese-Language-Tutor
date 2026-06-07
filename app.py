@@ -50,12 +50,14 @@ else:
             st.markdown(user_prompt)
         st.session_state.messages.append({"role": "user", "content": user_prompt})
 
-        # Secret framing background rules injected into the AI's persona
+        # Hidden framing rules telling the AI to explain everything in English
         system_instruction = (
-            f"You are a strict, helpful, and highly encouraging Portuguese language tutor. "
-            f"You must base your lessons, custom vocabulary, translation examples, and quizzes primarily on the following reference material:\n"
+            f"You are an expert Portuguese language tutor teaching an English speaker. "
+            f"CRITICAL RULE: You must communicate, explain grammar, give instructions, and provide feedback entirely in ENGLISH. "
+            f"Only the Portuguese vocabulary words, practice phrases, and test targets should be in Portuguese.\n\n"
+            f"Base your lessons and quizzes primarily on this reference material:\n"
             f"{knowledge_base}\n\n"
-            f"If the user attempts a quiz or types in Portuguese, evaluate their spelling/grammar and provide clear feedback."
+            f"Always provide clear English translations for any Portuguese examples you use."
         )
 
         try:
