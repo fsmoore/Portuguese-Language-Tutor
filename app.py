@@ -60,7 +60,7 @@ else:
 
         try:
             # Wake up the fast, smart Gemini 1.5 Flash model
-            model = genai.GenerativeModel('gemini-1.5-flash')
+            model = genai.GenerativeModel('gemini-2.5-flash')
             
             # Combine the systemic rule constraint with your literal message prompt
             full_prompt = f"{system_instruction}\n\nUser Request: {user_prompt}"
