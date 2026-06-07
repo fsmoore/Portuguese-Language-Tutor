@@ -1,103 +1,77 @@
 import streamlit as st
+import google.generativeai as genai
+import glob
 
 # --- APP CONFIGURATION ---
-st.set_page_config(
-    page_title="Português Avançado",
-    page_icon="🇵🇹",
-    layout="centered"
-)
+st.set_page_config(page_title="Meu Tutor de Português", page_icon="🇵🇹", layout="centered")
 
-# --- SIDEBAR NAVIGATION ---
-st.sidebar.title("Módulos de Lição")
-tutorial_section = st.sidebar.radio(
-    "Escolha uma lição:",
-    [
-        "1. Saudações (Greetings)", 
-        "2. Verbos Essenciais", 
-        "3. Gênero dos Substantivos (Nouns)",
-        "4. Flashcards de Vocabulário",
-        "5. Quiz de Prática"
-    ]
-)
-
-# --- TITLE ---
-st.title("Olá! 🇵🇹 Welcome to Portuguese")
-st.write("Seu guia interativo para dominar o idioma.")
+st.title("🤖 Your Custom AI Portuguese Tutor")
+st.write("This AI reads your uploaded notes and documents to teach you!")
 st.markdown("---")
 
-# --- SECTION 1: GREETINGS ---
-if tutorial_section == "1. Saudações (Greetings)":
-    st.header("Lesson 1: Common Greetings")
-    st.write("Here are the most common ways to greet people in Portuguese:")
-    
-    vocab = {
-        "Portuguese": ["Olá", "Bom dia", "Boa tarde", "Boa noite", "Por favor", "Obrigado/a"],
-        "English": ["Hello / Hi", "Good morning", "Good afternoon", "Good evening / night", "Please", "Thank you (m/f)"]
-    }
-    st.table(vocab)
-    st.info("💡 **Quick Tip:** Men say *Obrigado* and women say *Obrigada*, regardless of who they are talking to!")
+# --- SIDEBAR CONFIGURATION ---
+st.sidebar.title("Configuração")
+# This text box allows you to paste the API key you just copied
+api_key = st.sidebar.text_input("Enter Gemini API Key:", type="password")
 
-# --- SECTION 2: ESSENTIAL VERBS ---
-elif tutorial_section == "2. Verbos Essenciais":
-    st.header("Lesson 2: The Two 'To Be' Verbs")
-    st.write("Portuguese uses two different verbs for 'to be': **Ser** (permanent) and **Estar** (temporary).")
+if not api_key:
+    st.info("💡 Please enter your Gemini API Key in the sidebar to wake up your tutor!")
+else:
+    # Safely activate the Google AI engine using your key
+    genai.configure(api_key=api_key)
     
-    col1, col2 = st.columns(2)
-    with col1:
-        st.subheader("Ser (Permanent)")
-        st.markdown("* **Eu sou** (I am)\n* **Você é** (You are)\n* **Ele/Ela é** (He/She is)\n* **Nós somos** (We are)")
-        st.caption("Example: *Eu sou americano.* (I am American.)")
-    with col2:
-        st.subheader("Estar (Temporary)")
-        st.markdown("* **Eu estou** (I am)\n* **Você está** (You are)\n* **Ele/Ela está** (He/She is)\n* **Nós estamos** (We are)")
-        st.caption("Example: *Eu estou cansado.* (I am tired right now.)")
+    # --- AUTOMATICALLY READ YOUR UPLOADED CUSTOM FILES ---
+    # The app looks for any text files (.txt) uploaded alongside app.py on GitHub
+    knowledge_base = ""
+    txt_files = glob.glob("*.txt")
+    
+    if txt_files:
+        for file in txt_files:
+            with open(file, "r", encoding="utf-8") as f:
+                knowledge_base += f"\n--- Source File: {file} ---\n" + f.read()
+    else:
+        # If you haven't uploaded any text files yet, it uses this default standard guideline
+        knowledge_base = "No custom documents found yet. Use general high-quality Brazilian or European Portuguese language rules."
 
-# --- NEW SECTION 3: NOUN GENDERS ---
-elif tutorial_section == "3. Gênero dos Substantivos (Nouns)":
-    st.header("Lesson 3: Masculine vs. Feminine Nouns")
-    st.write("In Portuguese, all nouns have a gender. Articles change based on the word's gender.")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        st.success("**Masculine (O / Um)**")
-        st.write("* Usually ends in **-o**")
-        st.write("* **O** livro (The book)")
-        st.write("* **Um** carro (A car)")
-    with col2:
-        st.error("**Feminine (A / Uma)**")
-        st.write("* Usually ends in **-a**")
-        st.write("* **A** mesa (The table)")
-        st.write("* **Uma** maçã (An apple)")
+    # --- INTERACTIVE CHAT INTERFACE ---
+    # Initialize an internal chat memory tracking so the AI remembers previous questions
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
 
-# --- NEW SECTION 4: FLASHCARDS ---
-elif tutorial_section == "4. Flashcards de Vocabulário":
-    st.header("Interactive Vocabulary Flashcards")
-    st.write("Click to reveal the translation!")
-    
-    card_col1, card_col2, card_col3 = st.columns(3)
-    
-    with card_col1:
-        with st.expander("🇵🇹 A água"):
-            st.write("🇺🇸 The water")
-    with card_col2:
-        with st.expander("🇵🇹 O amigo"):
-            st.write("🇺🇸 The friend")
-    with card_col3:
-        with st.expander("🇵🇹 A casa"):
-            st.write("🇺🇸 The house")
+    # Display past conversation logs seamlessly on your phone screen
+    for message in st.session_state.messages:
+        with st.chat_message(message["role"]):
+            st.markdown(message["content"])
 
-# --- SECTION 5: QUIZ ---
-elif tutorial_section == "5. Quiz de Prática":
-    st.header("Test Your Knowledge! 🧠")
-    
-    q1 = st.radio("How do you say 'Good morning' in Portuguese?", ["Boa noite", "Bom dia", "Olá", "Por favor"])
-    if st.button("Submit Answer 1"):
-        if q1 == "Bom dia": st.success("Muito bem! 🎉")
-        else: st.error("Try again!")
-        
-    st.markdown("---")
-    
-    q2 = st.radio("Which article goes with 'livro' (book)?", ["A (Feminine)", "O (Masculine)"])
-    if st.button("Submit Answer 2"):
-        if q2 == "O (Masculine)": st.success("Correto! Masculine nouns use 'O'.")
-        else: st.error("Not quite! 'Livro' ends in -o, making it masculine.")
+    # Wait for you to type a prompt (e.g., "Give me a quiz based on my notes")
+    if user_prompt := st.chat_input("Ask your tutor anything..."):
+        # Display your new question on the screen instantly
+        with st.chat_message("user"):
+            st.markdown(user_prompt)
+        st.session_state.messages.append({"role": "user", "content": user_prompt})
+
+        # Secret framing background rules injected into the AI's persona
+        system_instruction = (
+            f"You are a strict, helpful, and highly encouraging Portuguese language tutor. "
+            f"You must base your lessons, custom vocabulary, translation examples, and quizzes primarily on the following reference material:\n"
+            f"{knowledge_base}\n\n"
+            f"If the user attempts a quiz or types in Portuguese, evaluate their spelling/grammar and provide clear feedback."
+        )
+
+        try:
+            # Wake up the fast, smart Gemini 1.5 Flash model
+            model = genai.GenerativeModel('gemini-1.5-flash')
+            
+            # Combine the systemic rule constraint with your literal message prompt
+            full_prompt = f"{system_instruction}\n\nUser Request: {user_prompt}"
+            
+            with st.chat_message("assistant"):
+                response_placeholder = st.empty()
+                response = model.generate_content(full_prompt)
+                response_placeholder.markdown(response.text)
+                
+            # Log the AI's response into memory
+            st.session_state.messages.append({"role": "assistant", "content": response.text})
+            
+        except Exception as e:
+            st.error(f"An error occurred while talking to the AI: {e}")
