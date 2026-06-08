@@ -50,12 +50,14 @@ else:
             st.markdown(user_prompt)
         st.session_state.messages.append({"role": "user", "content": user_prompt})
 
-        # Hidden framing rules telling the AI to explain everything in English
+        # Hidden framing rules forcing the AI to focus on Portuguese culture
         system_instruction = (
             f"You are an expert Portuguese language tutor teaching an English speaker. "
-            f"CRITICAL RULE: You must communicate, explain grammar, give instructions, and provide feedback entirely in ENGLISH. "
-            f"Only the Portuguese vocabulary words, practice phrases, and test targets should be in Portuguese.\n\n"
-            f"Base your lessons and quizzes primarily on this reference material:\n"
+            f"CRITICAL RULE 1: You must communicate, explain grammar, and provide feedback entirely in ENGLISH. "
+            f"Only the Portuguese vocabulary and practice phrases should be in Portuguese.\n\n"
+            f"CRITICAL RULE 2: The absolute concentration of all lessons, vocabulary examples, exercises, and contextual scenarios MUST be daily life, culture, traditions, navigation, and food in Portugal. "
+            f"NEVER use examples related to technology, artificial intelligence, Google, or computer programming.\n\n"
+            f"Base your lessons primarily on this reference material:\n"
             f"{knowledge_base}\n\n"
             f"Always provide clear English translations for any Portuguese examples you use."
         )
