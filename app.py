@@ -8,7 +8,7 @@ from email.mime.multipart import MIMEMultipart
 # --- APP CONFIGURATION ---
 st.set_page_config(page_title="Meu Tutor de Português", page_icon="🇵🇹", layout="centered")
 
-st.title("🤖 Your Custom AI Portuguese Tutor")
+st.title("🇵🇹 Your Custom AI Portuguese Tutor")
 st.write("This AI reads your uploaded notes and documents to teach you!")
 st.markdown("---")
 
@@ -16,7 +16,7 @@ st.markdown("---")
 st.sidebar.title("Configuração")
 api_key = st.sidebar.text_input("Enter Gemini API Key:", type="password")
 
-# --- NEW FEATURE: EMAIL CREDENTIALS IN SIDEBAR ---
+# --- EMAIL CREDENTIALS IN SIDEBAR ---
 st.sidebar.markdown("---")
 st.sidebar.subheader("📬 Email Transcript Setup")
 user_email = st.sidebar.text_input("Your Email Address (Recipient):")
@@ -37,7 +37,7 @@ else:
             with open(file, "r", encoding="utf-8") as f:
                 knowledge_base += f"\n--- Source File: {file} ---\n" + f.read()
     else:
-        knowledge_base = "No custom documents found yet. Use general high-quality Brazilian or European Portuguese language rules."
+        knowledge_base = "No custom documents found yet. Use general high-quality European Portuguese language rules focused on daily life."
 
     # --- INTERACTIVE CHAT INTERFACE ---
     if "messages" not in st.session_state:
@@ -74,7 +74,7 @@ else:
         except Exception as e:
             st.error(f"An error occurred while talking to the AI: {e}")
 
-    # --- NEW FEATURE: EMAIL EXPORT BUTTON ---
+    # --- EMAIL EXPORT BUTTON ---
     if st.session_state.messages:
         st.markdown("---")
         if st.button("📧 Email Me This Session's Transcript"):
@@ -82,7 +82,6 @@ else:
                 st.warning("⚠️ Please configure your email setup details in the sidebar first!")
             else:
                 with st.spinner("Compiling and sending transcript..."):
-                    # Format the chat history into a clear readable text format
                     email_body = "Here is the transcript of your Portuguese learning session:\n\n"
                     for msg in st.session_state.messages:
                         speaker = "You" if msg["role"] == "user" else "AI Tutor"
@@ -90,16 +89,14 @@ else:
                         email_body += "-"*40 + "\n\n"
 
                     try:
-                        # Set up the secure email protocol
                         msg = MIMEMultipart()
                         msg['From'] = sender_email
                         msg['To'] = user_email
                         msg['Subject'] = "🇵🇹 My Portuguese Session Transcript"
                         msg.attach(MIMEText(email_body, 'plain'))
 
-                       # Use SSL for a more robust connection that won't unexpectedly close
-server = smtplib.SMTP_SSL(smtp_server, 465)
-server.login(sender_email, sender_password)
+                        server = smtplib.SMTP_SSL(smtp_server, 465)
+                        server.login(sender_email, sender_password)
                         server.sendmail(sender_email, user_email, msg.as_string())
                         server.quit()
                         
