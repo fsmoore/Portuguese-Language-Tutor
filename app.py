@@ -97,10 +97,9 @@ else:
                         msg['Subject'] = "🇵🇹 My Portuguese Session Transcript"
                         msg.attach(MIMEText(email_body, 'plain'))
 
-                        # Securely connect to the email provider server and send
-                        server = smtplib.SMTP(smtp_server, 587)
-                        server.starttls()
-                        server.login(sender_email, sender_password)
+                       # Use SSL for a more robust connection that won't unexpectedly close
+server = smtplib.SMTP_SSL(smtp_server, 465)
+server.login(sender_email, sender_password)
                         server.sendmail(sender_email, user_email, msg.as_string())
                         server.quit()
                         
