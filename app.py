@@ -1,6 +1,9 @@
 import streamlit as st
 import google.generativeai as genai
 import glob
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 # --- APP CONFIGURATION ---
 st.set_page_config(page_title="Meu Tutor de Português", page_icon="🇵🇹", layout="centered")
@@ -11,46 +14,44 @@ st.markdown("---")
 
 # --- SIDEBAR CONFIGURATION ---
 st.sidebar.title("Configuração")
-# This text box allows you to paste the API key you just copied
 api_key = st.sidebar.text_input("Enter Gemini API Key:", type="password")
+
+# --- NEW FEATURE: EMAIL CREDENTIALS IN SIDEBAR ---
+st.sidebar.markdown("---")
+st.sidebar.subheader("📬 Email Transcript Setup")
+user_email = st.sidebar.text_input("Your Email Address (Recipient):")
+sender_email = st.sidebar.text_input("Sender Email Address:")
+sender_password = st.sidebar.text_input("Sender App Password:", type="password")
+smtp_server = st.sidebar.selectbox("Email Provider:", ["smtp.gmail.com", "smtp.mail.yahoo.com", "smtp-mail.outlook.com"])
 
 if not api_key:
     st.info("💡 Please enter your Gemini API Key in the sidebar to wake up your tutor!")
 else:
-    # Safely activate the Google AI engine using your key
     genai.configure(api_key=api_key)
     
     # --- AUTOMATICALLY READ YOUR UPLOADED CUSTOM FILES ---
-    # The app looks for any text files (.txt) uploaded alongside app.py on GitHub
     knowledge_base = ""
     txt_files = glob.glob("*.txt")
-    
     if txt_files:
         for file in txt_files:
             with open(file, "r", encoding="utf-8") as f:
                 knowledge_base += f"\n--- Source File: {file} ---\n" + f.read()
     else:
-        # If you haven't uploaded any text files yet, it uses this default standard guideline
         knowledge_base = "No custom documents found yet. Use general high-quality Brazilian or European Portuguese language rules."
 
     # --- INTERACTIVE CHAT INTERFACE ---
-    # Initialize an internal chat memory tracking so the AI remembers previous questions
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
-    # Display past conversation logs seamlessly on your phone screen
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
 
-    # Wait for you to type a prompt (e.g., "Give me a quiz based on my notes")
     if user_prompt := st.chat_input("Ask your tutor anything..."):
-        # Display your new question on the screen instantly
         with st.chat_message("user"):
             st.markdown(user_prompt)
         st.session_state.messages.append({"role": "user", "content": user_prompt})
 
-        # Hidden framing rules forcing the AI to focus on Portuguese culture
         system_instruction = (
             f"You are an expert Portuguese language tutor teaching an English speaker. "
             f"CRITICAL RULE 1: You must communicate, explain grammar, and provide feedback entirely in ENGLISH. "
@@ -63,19 +64,46 @@ else:
         )
 
         try:
-            # Wake up the fast, smart Gemini 1.5 Flash model
             model = genai.GenerativeModel('gemini-2.5-flash')
-            
-            # Combine the systemic rule constraint with your literal message prompt
             full_prompt = f"{system_instruction}\n\nUser Request: {user_prompt}"
-            
             with st.chat_message("assistant"):
                 response_placeholder = st.empty()
                 response = model.generate_content(full_prompt)
                 response_placeholder.markdown(response.text)
-                
-            # Log the AI's response into memory
             st.session_state.messages.append({"role": "assistant", "content": response.text})
-            
         except Exception as e:
             st.error(f"An error occurred while talking to the AI: {e}")
+
+    # --- NEW FEATURE: EMAIL EXPORT BUTTON ---
+    if st.session_state.messages:
+        st.markdown("---")
+        if st.button("📧 Email Me This Session's Transcript"):
+            if not user_email or not sender_email or not sender_password:
+                st.warning("⚠️ Please configure your email setup details in the sidebar first!")
+            else:
+                with st.spinner("Compiling and sending transcript..."):
+                    # Format the chat history into a clear readable text format
+                    email_body = "Here is the transcript of your Portuguese learning session:\n\n"
+                    for msg in st.session_state.messages:
+                        speaker = "You" if msg["role"] == "user" else "AI Tutor"
+                        email_body += f"[{speaker}]: {msg['content']}\n\n"
+                        email_body += "-"*40 + "\n\n"
+
+                    try:
+                        # Set up the secure email protocol
+                        msg = MIMEMultipart()
+                        msg['From'] = sender_email
+                        msg['To'] = user_email
+                        msg['Subject'] = "🇵🇹 My Portuguese Session Transcript"
+                        msg.attach(MIMEText(email_body, 'plain'))
+
+                        # Securely connect to the email provider server and send
+                        server = smtplib.SMTP(smtp_server, 587)
+                        server.starttls()
+                        server.login(sender_email, sender_password)
+                        server.sendmail(sender_email, user_email, msg.as_string())
+                        server.quit()
+                        
+                        st.success("🎉 Transcript emailed successfully! Check your inbox.")
+                    except Exception as email_err:
+                        st.error(f"Failed to send email: {email_err}")
