@@ -2,66 +2,46 @@ import streamlit as st
 import google.generativeai as genai
 import glob
 import smtplib
-import json
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
 st.set_page_config(page_title="Meu Tutor de Português", page_icon="🇵🇹", layout="centered")
 
-# --- NATIVE PERMANENT BROWSER QUERY STORAGE ---
-# Retrieves values locked into your unique private URL browser state
-query_params = st.query_params
+# --- HARDCODED PERMANENT CREDENTIALS MANAGER ---
+# Put your real values inside the quotes below. They will stay permanently saved on your phone!
+PERMANENT_GEMINI_API_KEY = "PASTE_YOUR_GEMINI_API_KEY_HERE"
+PERMANENT_RECIPIENT_EMAIL = "fsmoore@pacbell.net"
+PERMANENT_SENDER_EMAIL = "frankscottmoore@gmail.com"
+PERMANENT_SENDER_APP_PASSWORD = "PASTE_YOUR_16_LETTER_APP_PASSWORD_HERE" # (No spaces)
 
-saved_api_key = query_params.get("api", "")
-saved_user_email = query_params.get("recip", "")
-saved_sender_email = query_params.get("send", "")
-saved_sender_pwd = query_params.get("pwd", "")
-
-# Manage session memory arrays natively
 if "messages" not in st.session_state:
     st.session_state.messages = []
 
 if "email_sent" not in st.session_state:
     st.session_state.email_sent = False
 
-st.title("🇵🇹 Persistent AI Portuguese Tutor")
-st.write("Your conversation data is preserved safely during your active sessions.")
-
-# --- GLITCH 1 FIX: DYNAMIC VISUAL PROMPT ALERT ---
-if st.session_state.messages and not st.session_state.email_sent:
-    st.warning("⚠️ **Unsaved Drill Session Active!** Remember to tap the blue 'Email Me' button at the bottom of the screen to back up your notes before closing this browser window.")
-elif st.session_state.email_sent:
-    st.success("✅ Your current session transcript has been securely emailed and backed up!")
-
+st.title("🇵🇹 Permanent AI Portuguese Tutor")
+st.write("Your credentials are permanently locked into your cloud application pipeline.")
 st.markdown("---")
 
-# --- SIDEBAR CONFIGURATION (PRE-FILLED FROM URL COOKIE STATE) ---
+# --- SIDEBAR DISPLAY (READ-ONLY REFERENCE PANEL) ---
 st.sidebar.title("Configuração")
-api_key = st.sidebar.text_input("Enter Gemini API Key:", value=saved_api_key, type="password")
+st.sidebar.info("🔒 Credentials securely hardcoded into the backend. No configuration required!")
 st.sidebar.markdown("---")
-st.sidebar.subheader("📬 Email Transcript Setup")
-user_email = st.sidebar.text_input("Your Email Address (Recipient):", value=saved_user_email)
-sender_email = st.sidebar.text_input("Sender Email Address:", value=saved_sender_email)
-sender_password = st.sidebar.text_input("Sender App Password:", value=saved_sender_pwd, type="password")
-smtp_server = st.sidebar.selectbox("Email Provider:", ["smtp.gmail.com", "smtp.mail.yahoo.com", "smtp-mail.outlook.com"])
-
-# --- GLITCH 2 FIX: THE PERMANENT AUTO-LOCK BUTTON ---
-if st.sidebar.button("🔒 Lock Credentials to My Phone"):
-    st.query_params["api"] = api_key
-    st.query_params["recip"] = user_email
-    st.query_params["send"] = sender_email
-    st.query_params["pwd"] = sender_password
-    st.sidebar.success("🎉 Keys locked to your browser! Bookmark this page now to save them.")
+st.sidebar.subheader("📬 System Parameters")
+st.sidebar.text(f"Recipient: {PERMANENT_RECIPIENT_EMAIL}")
+st.sidebar.text(f"Sender: {PERMANENT_SENDER_EMAIL}")
 
 if st.sidebar.button("🗑️ Clear Current Chat History"):
     st.session_state.messages = []
     st.session_state.email_sent = False
     st.rerun()
 
-if not api_key:
-    st.info("💡 Please enter your Gemini API Key in the sidebar to wake up your tutor!")
+# --- INITIALIZE CORE AI ENGINE ---
+if not PERMANENT_GEMINI_API_KEY or "PASTE" in PERMANENT_GEMINI_API_KEY:
+    st.error("⚠️ **SETUP REQUIRED:** Please edit your app.py on GitHub and type your actual Gemini API Key on Line 10.")
 else:
-    genai.configure(api_key=api_key)
+    genai.configure(api_key=PERMANENT_GEMINI_API_KEY)
     
     knowledge_base = ""
     txt_files = glob.glob("*.txt")
@@ -72,10 +52,17 @@ else:
     else:
         knowledge_base = "Use general high-quality European Portuguese rules focused on daily life, food, and culture in Portugal."
 
-    # --- DISPLAY INTERACTIVE CHAT ---
+    # --- DISPLAY ACTIVE DRILLS ---
     for message in st.session_state.messages:
         with st.chat_message(message["role"]):
             st.markdown(message["content"])
+
+    # --- THE SAFETY NET: TRANSCRIPT WARNING PROMPT ---
+    if st.session_state.messages:
+        if not st.session_state.email_sent:
+            st.error("⚠️ **UNSAVED DRILL SESSION ACTIVE:** Please scroll down and tap the blue button to email your transcript before closing the app, or your current practice data will clear out!")
+        else:
+            st.success("✅ Transcript emailed successfully! It is now safe to close your app or clear the history.")
 
     if user_prompt := st.chat_input("Ask your tutor anything..."):
         with st.chat_message("user"):
@@ -86,7 +73,8 @@ else:
         system_instruction = (
             f"You are an expert Portuguese language tutor teaching an English speaker. "
             f"Explain grammar and rules entirely in ENGLISH. "
-            f"Focus all scenarios on daily life, navigation, traditions, and food in Portugal."
+            f"Focus all scenarios on daily life, navigation, traditions, and food in Portugal.\n\n"
+            f"Base context rules on this text content:\n{knowledge_base}"
         )
 
         try:
@@ -97,36 +85,34 @@ else:
                 response = model.generate_content(full_prompt)
                 response_placeholder.markdown(response.text)
             st.session_state.messages.append({"role": "assistant", "content": response.text})
+            st.rerun()
         except Exception as e:
-            st.error(f"AI Error: {e}")
+            st.error(f"AI Connection Error: {e}")
 
-    # --- EMAIL EXPORT MODULE ---
+    # --- EMAIL AUTOMATION EXPORT LINK ---
     if st.session_state.messages:
         st.markdown("---")
         if st.button("📧 Email Me This Session's Transcript"):
-            if not user_email or not sender_email or not sender_password:
-                st.warning("⚠️ Please fill out your email parameters in the sidebar setup configuration first!")
-            else:
-                with st.spinner("Compiling and sending transcript..."):
-                    email_body = "Here is the transcript of your Portuguese learning session:\n\n"
-                    for msg in st.session_state.messages:
-                        speaker = "You" if msg["role"] == "user" else "AI Tutor"
-                        email_body += f"[{speaker}]: {msg['content']}\n\n"
-                        email_body += "-"*40 + "\n\n"
+            with st.spinner("Compiling and sending transcript..."):
+                email_body = "Here is the transcript of your Portuguese learning session:\n\n"
+                for msg in st.session_state.messages:
+                    speaker = "You" if msg["role"] == "user" else "AI Tutor"
+                    email_body += f"[{speaker}]: {msg['content']}\n\n"
+                    email_body += "-"*40 + "\n\n"
 
-                    try:
-                        msg = MIMEMultipart()
-                        msg['From'] = sender_email
-                        msg['To'] = user_email
-                        msg['Subject'] = "🇵🇹 My Portuguese Session Transcript"
-                        msg.attach(MIMEText(email_body, 'plain'))
+                try:
+                    msg = MIMEMultipart()
+                    msg['From'] = PERMANENT_SENDER_EMAIL
+                    msg['To'] = PERMANENT_RECIPIENT_EMAIL
+                    msg['Subject'] = "🇵🇹 My Portuguese Session Transcript"
+                    msg.attach(MIMEText(email_body, 'plain'))
 
-                        server = smtplib.SMTP_SSL(smtp_server, 465)
-                        server.login(sender_email, sender_password)
-                        server.sendmail(sender_email, user_email, msg.as_string())
-                        server.quit()
-                        
-                        st.session_state.email_sent = True
-                        st.rerun()
-                    except Exception as email_err:
-                        st.error(f"Failed to send email: {email_err}")
+                    server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
+                    server.login(PERMANENT_SENDER_EMAIL, PERMANENT_SENDER_APP_PASSWORD)
+                    server.sendmail(PERMANENT_SENDER_EMAIL, PERMANENT_RECIPIENT_EMAIL, msg.as_string())
+                    server.quit()
+                    
+                    st.session_state.email_sent = True
+                    st.rerun()
+                except Exception as email_err:
+                    st.error(f"Failed to send email: {email_err}")
